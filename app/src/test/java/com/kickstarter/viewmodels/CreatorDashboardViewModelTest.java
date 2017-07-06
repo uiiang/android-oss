@@ -26,51 +26,13 @@ import rx.observers.TestSubscriber;
 public class CreatorDashboardViewModelTest extends KSRobolectricTestCase {
   private CreatorDashboardViewModel.ViewModel vm;
 
-  private final TestSubscriber<String> projectBackersCountText = new TestSubscriber<>();
   private final TestSubscriber<Project> latestProject = new TestSubscriber<>();
-  private final TestSubscriber<String> projectNameTextViewText = new TestSubscriber<>();
   private final TestSubscriber<Pair<Project, RefTag>> startProjectActivity = new TestSubscriber<>();
-  private final TestSubscriber<String> timeRemaining = new TestSubscriber<>();
 
   protected void setUpEnvironment(final @NonNull Environment environment) {
     this.vm = new CreatorDashboardViewModel.ViewModel(environment);
     this.vm.outputs.latestProject().subscribe(this.latestProject);
-    this.vm.outputs.projectBackersCountText().subscribe(this.projectBackersCountText);
-    this.vm.outputs.projectNameTextViewText().subscribe(this.projectNameTextViewText);
     this.vm.outputs.startProjectActivity().subscribe(this.startProjectActivity);
-    this.vm.outputs.timeRemaining().subscribe(this.timeRemaining);
-  }
-
-  @Test
-  public void testProjectBackersCountText() {
-    final List<Project> projects = Arrays.asList(
-      ProjectFactory.project().toBuilder().backersCount(10).build()
-    );
-
-    final MockApiClient apiClient = new MockApiClient() {
-      @Override public @NonNull
-      Observable<ProjectsEnvelope> fetchProjects(final boolean member) {
-        return Observable.just(ProjectsEnvelopeFactory.projectsEnvelope(projects));
-      }
-    };
-
-    setUpEnvironment(environment().toBuilder().apiClient(apiClient).build());
-    this.projectBackersCountText.assertValues("10");
-  }
-
-  @Test
-  public void testProjectNameTextViewText() {
-    final List<Project> projects = Arrays.asList(ProjectFactory.project());
-
-    final MockApiClient apiClient = new MockApiClient() {
-      @Override public @NonNull
-      Observable<ProjectsEnvelope> fetchProjects(final boolean member) {
-        return Observable.just(ProjectsEnvelopeFactory.projectsEnvelope(projects));
-      }
-    };
-
-    setUpEnvironment(environment().toBuilder().apiClient(apiClient).build());
-    this.projectNameTextViewText.assertValues(ListUtils.first(projects).name());
   }
 
   @Test
@@ -104,22 +66,5 @@ public class CreatorDashboardViewModelTest extends KSRobolectricTestCase {
 
     setUpEnvironment(environment().toBuilder().apiClient(apiClient).build());
     this.latestProject.assertValues(ListUtils.first(projects));
-  }
-
-  @Test
-  public void testTimeRemaining() {
-    final List<Project> projects = Arrays.asList(
-      ProjectFactory.project().toBuilder().deadline(new DateTime().plusDays(10)).build()
-    );
-
-    final MockApiClient apiClient = new MockApiClient() {
-      @Override public @NonNull
-      Observable<ProjectsEnvelope> fetchProjects(final boolean member) {
-        return Observable.just(ProjectsEnvelopeFactory.projectsEnvelope(projects));
-      }
-    };
-
-    setUpEnvironment(environment().toBuilder().apiClient(apiClient).build());
-    this.timeRemaining.assertValues("9");
   }
 }

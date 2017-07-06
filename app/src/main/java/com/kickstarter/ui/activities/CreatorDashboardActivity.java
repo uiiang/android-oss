@@ -4,8 +4,11 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.widget.TextView;
 
+import com.kickstarter.KSApplication;
 import com.kickstarter.R;
 import com.kickstarter.libs.BaseActivity;
 import com.kickstarter.libs.KSCurrency;
@@ -14,6 +17,7 @@ import com.kickstarter.libs.RefTag;
 import com.kickstarter.libs.qualifiers.RequiresActivityViewModel;
 import com.kickstarter.libs.utils.ProjectUtils;
 import com.kickstarter.models.Project;
+import com.kickstarter.models.ProjectStats;
 import com.kickstarter.ui.IntentKey;
 import com.kickstarter.ui.adapters.CreatorDashboardAdapter;
 import com.kickstarter.viewmodels.CreatorDashboardViewModel;
@@ -24,12 +28,14 @@ import butterknife.Bind;
 import butterknife.BindString;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import rx.android.schedulers.AndroidSchedulers;
 
 import static com.kickstarter.libs.rx.transformers.Transformers.observeForUI;
 
 @RequiresActivityViewModel(CreatorDashboardViewModel.ViewModel.class)
 public final class CreatorDashboardActivity extends BaseActivity<CreatorDashboardViewModel.ViewModel> {
 
+  protected @Bind(R.id.creator_dashboard_recycler_view) RecyclerView creatorDashboardRecyclerView;
   protected @Bind(R.id.creator_dashboard_amount_raised) TextView amountRaisedTextView;
   protected @Bind(R.id.creator_dashboard_funding_text) TextView fundingTextTextView;
   protected @Bind(R.id.creator_dashboard_backer_count) TextView backerCountTextView;
@@ -49,40 +55,23 @@ public final class CreatorDashboardActivity extends BaseActivity<CreatorDashboar
     setContentView(R.layout.creator_dashboard_layout);
     ButterKnife.bind(this);
 
+    this.adapter = new CreatorDashboardAdapter();
+    creatorDashboardRecyclerView.setAdapter(this.adapter);
+    creatorDashboardRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+
     this.ksCurrency = this.environment().ksCurrency();
     this.ksString = this.environment().ksString();
 
-    this.adapter = new CreatorDashboardAdapter();
-
-    viewModel.outputs.latestProject()
+    viewModel.outputs.projectAndStats()
       .compose(bindToLifecycle())
-      .compose(observeForUI())
-      .subscribe(this::setPledgedOfGoalString);
+      .observeOn(AndroidSchedulers.mainThread())
+      .subscribe(ps -> this.renderProjectAndStats(ps.first, ps.second));
 
     viewModel.outputs.latestProject()
       .compose(bindToLifecycle())
       .compose(observeForUI())
       .subscribe(this::setTimeRemainingTextTextView);
 
-    viewModel.outputs.timeRemaining()
-      .compose(bindToLifecycle())
-      .compose(observeForUI())
-      .subscribe(timeRemainingTextView::setText);
-
-    viewModel.outputs.projectBackersCountText()
-      .compose(bindToLifecycle())
-      .compose(observeForUI())
-      .subscribe(backerCountTextView::setText);
-
-    viewModel.outputs.projectNameTextViewText()
-      .compose(bindToLifecycle())
-      .compose(observeForUI())
-      .subscribe(projectNameTextView::setText);
-
-    viewModel.outputs.rewardCount()
-      .compose(bindToLifecycle())
-      .compose(observeForUI())
-      .subscribe(rewardCountTextView::setText);
 
     viewModel.outputs.startProjectActivity()
       .compose(bindToLifecycle())
@@ -100,6 +89,10 @@ public final class CreatorDashboardActivity extends BaseActivity<CreatorDashboar
       .putExtra(IntentKey.PROJECT, project)
       .putExtra(IntentKey.REF_TAG, refTag);
     startActivity(intent);
+  }
+
+  private void renderProjectAndStats(final @NonNull Project project, final @NonNull ProjectStats projectStats) {
+    adapter.takeProjectAndStats(project, projectStats);
   }
 
   private void setPledgedOfGoalString(final @NonNull Project latestProject) {
